@@ -1,3 +1,5 @@
+use std::collections::{BTreeSet, HashMap, HashSet};
+
 use bstr::BString;
 use byteorder::{BigEndian, ReadBytesExt};
 use hex_literal::hex;
@@ -72,12 +74,24 @@ fn length_encoded_string_type(i: &mut ByteStream) -> PResult<StringType> {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 enum StringType {
     Simple(usize),
     LzfCompressed,
     I8,
     I16,
     I32,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+enum Value {
+    String(BString),
+    Lists(Vec<BString>),
+    Sets(HashSet<BString>),
+    Hashes(HashMap<BString, Value>),
+    SortedSets(BTreeSet<BString>),
+    AuxiliaryField((BString, BString)),
+    DatabaseSelector(BString),
 }
 
 fn string_encoded(i: &mut ByteStream) -> PResult<BString> {
@@ -99,20 +113,45 @@ mod tests {
     fn rdb_magic_string_valid_success() {
         let header: [u8; 5] = hex!("52 45 44 49 53");
         let res = magic_string(&mut header.as_ref());
-        assert!(res.is_ok())
+        assert!(res.is_ok());
     }
 
     #[test]
     fn rdb_version_valid_success() {
         let version_bytes: [u8; 4] = hex!("30 30 30 33");
         let res = rdb_version(&mut version_bytes.as_ref());
-        assert_eq!(Ok(BString::from("0003")), res)
+        assert_eq!(Ok(BString::from("0003")), res);
     }
 
     #[test]
     fn header_valid_returns_version() {
         let header_s = "REDIS0003";
         let res = header(&mut header_s.as_ref());
-        assert_eq!(Ok(BString::from("0003")), res)
+        assert_eq!(Ok(BString::from("0003")), res);
+    }
+
+    #[test]
+    fn length_encoded_string_type_type_0_success() {
+        let length_bytes: [u8; 1] = hex!("09");
+        let res = length_encoded_string_type(&mut length_bytes.as_ref());
+        assert_eq!(Ok(StringType::Simple(9)), res);
+    }
+
+    #[test]
+    fn string_encoded_type_0_success() {
+        let bytes = hex!("0972656469732d76657205362e322e36").to_vec();
+        let mut input = bytes.as_ref(); 
+        let res = string_encoded.parse_next(&mut input);
+        assert_eq!(Ok(BString::from("redis-ver")), res);
+        let res = string_encoded.parse_next(&mut input);
+        assert_eq!(Ok(BString::from("6.2.6")), res);
+    }
+
+    #[test]
+    fn auxiliary_field_string_encoded_0_success() {
+        let bytes = hex!("fa0972656469732d76657205362e322e36").to_vec();
+        let mut input = bytes.as_ref(); 
+        let res = auxiliary_field(&mut input);
+        assert_eq!(Ok((BString::from("redis-ver"), BString::from("6.2.6"))), res)
     }
 }
