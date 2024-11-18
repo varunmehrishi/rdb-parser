@@ -75,7 +75,7 @@ pub fn parse(i: &mut ByteStream) -> anyhow::Result<Vec<Construct>> {
     let mut elements = Vec::new();
 
     while let Ok(construct) = constructs.parse_next(i) {
-        // println!("{construct:?}");
+        println!("{construct:?}");
         elements.push(construct);
     }
 
