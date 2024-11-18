@@ -7,5 +7,6 @@ edition = "2021"
 anyhow = "1.0.93"
 bstr = { version = "1.11.0", features = ["alloc"] }
 byteorder = "1.5.0"
+hex = "0.4.3"
 hex-literal = "0.4.1"
 winnow = { version = "0.6.20", features = ["debug"] }
